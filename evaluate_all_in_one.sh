@@ -18,7 +18,7 @@ num_processes=4
 num_frames=32
 launcher=accelerate
 
-available_models="llava_one_vision_qwen2_0p5b_ov_32f,llava_one_vision_qwen2_7b_ov_32f,llava_next_video_7b_qwen2_32f,llama3_vila1p5_8b_32f,llama3_longvila_8b_128frames_32f,longva_7b_32f,internvl2_2b_8f,internvl2_8b_8f"
+available_models="llava_one_vision_qwen2_0p5b_ov_32f,llava_one_vision_qwen2_7b_ov_32f,llava_next_video_7b_qwen2_32f,llama3_vila1p5_8b_32f,llama3_longvila_8b_128frames_32f,longva_7b_32f,internvl2_2b_8f,internvl2_8b_8f, qwen_2p5_7b_instruct, qwen_2p5_7b_instruct_spar234k"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -130,6 +130,14 @@ for model in "${models[@]}"; do
         model_family="internvl2"
         model_args="pretrained=OpenGVLab/InternVL2-40B,modality=video,max_frames_num=8,device_map=auto"
         num_processes=1
+        ;;
+    "qwen_2p5_7b_instruct")
+        model_family="qwen25vl"
+        model_args="pretrained=Qwen/Qwen2.5-VL-7B-Instruct,modality=video"
+        ;;
+    "qwen_2p5_7b_instruct_spar234k")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/easyr1_spar234k_step240,modality=video"
         ;;
     *)
         echo "Unknown model: $model"
