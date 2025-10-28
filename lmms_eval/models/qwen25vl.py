@@ -1,15 +1,19 @@
 import logging
 import os
 import sys
-from typing import List, Tuple
+from datetime import timedelta
+from typing import Dict, List, Tuple
 
+import torch
+from accelerate import Accelerator, DistributedType
+from accelerate.state import AcceleratorState
+from accelerate.utils import InitProcessGroupKwargs
 from tqdm import tqdm
-from vllm import LLM, SamplingParams
 
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from transformers import AutoProcessor, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoProcessor, AutoTokenizer
 
 _POSSIBLE_QWEN_UTIL_ROOTS = (
     "Qwen2.5-VL",
@@ -32,6 +36,15 @@ except ImportError as exc:  # pragma: no cover
 
 eval_logger = logging.getLogger("eval_logger")
 
+DEFAULT_GEN_KWARGS: Dict[str, float | int | bool] = {
+    "max_new_tokens": 256,
+    "do_sample": False,
+    "temperature": 0.0,
+    "top_p": 1.0,
+}
+
+ALLOWED_GEN_KWARGS = set(DEFAULT_GEN_KWARGS.keys())
+
 
 @register_model("qwen25vl")
 class Qwen25VL(lmms):
@@ -39,8 +52,8 @@ class Qwen25VL(lmms):
         self,
         pretrained: str = "Qwen/Qwen2.5-VL-7B-Instruct",
         modality: str = "image",
-        device: str = "cuda",
-        device_map: str = "cuda",
+        device: str = "cuda:0",
+        device_map: str = "cuda:0",
         batch_size: str = "1",
         max_frames_num: int | None = None,
         **kwargs,
@@ -48,22 +61,28 @@ class Qwen25VL(lmms):
         super().__init__()
 
         self.path = pretrained
-        self._model = LLM(
-            self.path,
-            tensor_parallel_size=int(os.getenv("VLLM_TENSOR_PARALLELISM", 1)),
-            max_model_len=65536,
-            rope_scaling={
-                "type": "mrope",
-                "rope_type": "mrope",
-                "mrope_section": [16, 24, 24],
-            },
+        torch_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+        model_kwargs = dict(
+            torch_dtype=torch_dtype,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
         )
-        self._processor = AutoProcessor.from_pretrained(self.path)
+        if device_map == "auto":
+            model_kwargs["device_map"] = device_map
+
+        self._model = AutoModelForCausalLM.from_pretrained(
+            self.path,
+            **model_kwargs,
+        ).eval()
+        if device_map != "auto":
+            self._model.to(torch.device(device))
+
+        self._processor = AutoProcessor.from_pretrained(
+            self.path, trust_remote_code=True
+        )
         self._tokenizer = AutoTokenizer.from_pretrained(
             self.path, trust_remote_code=True
         )
-
-        self.sampling_params = SamplingParams(temperature=0.0, max_tokens=64)
 
         batch_size = int(batch_size)
         assert batch_size == 1, (
@@ -73,9 +92,59 @@ class Qwen25VL(lmms):
 
         self._config = None
 
-        self._device = device
-        self._rank = 0
-        self._world_size = 1
+        accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
+        accelerator = Accelerator(kwargs_handlers=[accelerator_kwargs])
+        self.accelerator = accelerator
+
+        if accelerator.num_processes > 1:
+            if accelerator.distributed_type not in {
+                DistributedType.DEEPSPEED,
+                DistributedType.FSDP,
+                DistributedType.MULTI_GPU,
+            }:
+                raise ValueError(
+                    "Unsupported distributed type provided. Only FSDP, Deepspeed, and DDP are supported."
+                )
+            if accelerator.distributed_type == DistributedType.DEEPSPEED:
+                kwargs = {
+                    "train_micro_batch_size_per_gpu": self.batch_size_per_gpu,
+                    "train_batch_size": self.batch_size_per_gpu
+                    * accelerator.num_processes,
+                }
+                AcceleratorState().deepspeed_plugin.deepspeed_config_process(
+                    must_match=True, **kwargs
+                )
+                eval_logger.info(
+                    "Detected DistributedType.DEEPSPEED. Ensure `accelerate config` uses zero stage 0 for evaluation."
+                )
+
+            if accelerator.distributed_type in {
+                DistributedType.FSDP,
+                DistributedType.DEEPSPEED,
+            }:
+                self._model = accelerator.prepare(self._model)
+            else:
+                self._model = accelerator.prepare_model(
+                    self._model, evaluation_mode=True
+                )
+
+            self._device = torch.device(f"cuda:{accelerator.local_process_index}")
+            self._rank = accelerator.local_process_index
+            self._world_size = accelerator.num_processes
+            eval_logger.info(
+                f"Using {accelerator.num_processes} devices with data parallelism"
+            )
+        else:
+            if device_map == "auto":
+                eval_logger.info("Using device_map='auto' for Qwen2.5-VL inference")
+                self._device = torch.device(device)
+            else:
+                self._device = torch.device(device)
+                self._model.to(self._device)
+            self._rank = 0
+            self._world_size = 1
+
+        self.device_map = device_map
 
         self.modality = modality
         self.max_frames_num = max_frames_num
@@ -124,6 +193,8 @@ class Qwen25VL(lmms):
         ]:
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
             visuals = self.flatten(visuals)
+            if visuals == [None]:
+                visuals = []
             if self.modality == "image":
                 raise NotImplementedError(
                     "Image inference for Qwen25VL is not supported yet."
@@ -131,39 +202,74 @@ class Qwen25VL(lmms):
             if self.modality == "video":
                 if not visuals:
                     raise ValueError("No video inputs found for Qwen25VL request.")
-                # Qwen2.5-VL supports streaming multiple videos in a single turn, so
-                # we pack every available clip as a dedicated video content block.
-                video_contents = []
-                for video_path in visuals:
-                    video_entry = {
-                        "type": "video",
-                        "video": f"{video_path}",
-                    }
-                    if self.max_frames_num:
-                        video_entry["nframes"] = self.max_frames_num
-                    video_contents.append(video_entry)
+                if len(visuals) != 1:
+                    raise AssertionError(
+                        f"Only one video is supported per request, but got {len(visuals)} videos."
+                    )
+                video_path = visuals[0]
+                video_entry = {
+                    "type": "video",
+                    "video": f"{video_path}",
+                }
+                if self.max_frames_num:
+                    video_entry["nframes"] = self.max_frames_num
 
                 messages = [
                     {
                         "role": "user",
                         "content": [
-                            *video_contents,
+                            video_entry,
                             {"type": "text", "text": f"{contexts}"},
                         ],
                     }
                 ]
-                text = self._processor.apply_chat_template(
+                if "until" in gen_kwargs:
+                    gen_kwargs.pop("until")
+
+                for key, value in DEFAULT_GEN_KWARGS.items():
+                    if key not in gen_kwargs:
+                        gen_kwargs[key] = value
+
+                drop_keys = [key for key in gen_kwargs if key not in ALLOWED_GEN_KWARGS]
+                for key in drop_keys:
+                    gen_kwargs.pop(key)
+
+                chat_prompt = self._processor.apply_chat_template(
                     messages, tokenize=False, add_generation_prompt=True
                 )
-                _, video_inputs = process_vision_info(messages)
-                generated_ids = self._model.generate(
-                    {
-                        "prompt": text,
-                        "multi_modal_data": {"video": video_inputs},
-                    },
-                    sampling_params=self.sampling_params,
-                )
-                output_text = generated_ids[0].outputs[0].text
+                image_inputs, video_inputs = process_vision_info(messages)
+                processor_kwargs = {
+                    "text": [chat_prompt],
+                    "return_tensors": "pt",
+                    "padding": True,
+                }
+                if image_inputs is not None and len(image_inputs) > 0:
+                    processor_kwargs["images"] = image_inputs
+                if video_inputs is not None and len(video_inputs) > 0:
+                    processor_kwargs["videos"] = video_inputs
+
+                model_inputs = self._processor(**processor_kwargs)
+                if "input_ids" not in model_inputs:
+                    raise ValueError(
+                        "Processor did not return input_ids for Qwen25VL request."
+                    )
+                input_length = model_inputs["input_ids"].shape[-1]
+
+                model_dtype = next(self.model.parameters()).dtype
+                for key, value in model_inputs.items():
+                    if isinstance(value, torch.Tensor):
+                        if value.is_floating_point():
+                            model_inputs[key] = value.to(self.device, dtype=model_dtype)
+                        else:
+                            model_inputs[key] = value.to(self.device)
+
+                with torch.inference_mode():
+                    generated = self.model.generate(**model_inputs, **gen_kwargs)
+
+                new_tokens = generated[:, input_length:]
+                output_text = self._tokenizer.batch_decode(
+                    new_tokens, skip_special_tokens=True
+                )[0].strip()
             else:
                 raise NotImplementedError
             res.append(output_text)

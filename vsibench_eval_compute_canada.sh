@@ -54,6 +54,7 @@ if [[ "${SKIP_DEP_INSTALL}" != "1" ]]; then
   python -m pip install -e .
   python -m pip install "s2wrapper@git+https://github.com/bfshi/scaling_on_scales"
   python -m pip install deepspeed
+  python -m pip install qwen-vl-utils
 else
   printf "[%s] Skipping dependency installation because SKIP_DEP_INSTALL=%s\n" "$(date --iso-8601=seconds)" "${SKIP_DEP_INSTALL}"
 fi
