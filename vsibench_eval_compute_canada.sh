@@ -15,7 +15,14 @@ set -euo pipefail
 printf "[%s] Starting VSI-Bench evaluation on host: %s\n" "$(date --iso-8601=seconds)" "${HOSTNAME}"
 
 # Configure module environment. Adjust if your Compute Canada site uses different module names.
-module load StdEnv/2023 opencv scipy-stack
+module load StdEnv/2023 scipy-stack
+
+# Allow callers to override the exact compiler/OpenCV module pair expected by Compute Canada.
+GCC_MODULE="${GCC_MODULE:-gcc/12.3}"
+OPENCV_MODULE="${OPENCV_MODULE:-opencv/4.9.0}"
+
+module load "${GCC_MODULE}"
+module load "${OPENCV_MODULE}"
 
 # CUDA_MODULE="${CUDA_MODULE:-cuda/12.1}"
 # if ! module load "${CUDA_MODULE}"; then
@@ -25,7 +32,7 @@ module load StdEnv/2023 opencv scipy-stack
 # fi
 # module load cuda/11.8
 module load python/3.10
-module load gcc arrow/18.1.0
+module load arrow/18.1.0
 
 ENV_NAME="${ENV_NAME:-vsibench}"
 SKIP_DEP_INSTALL="${SKIP_DEP_INSTALL:-0}"
@@ -61,13 +68,14 @@ fi
 
 # Configure runtime defaults. Override via environment variables when submitting.
 MODEL_LIST="${MODEL_LIST:-qwen_2p5_7b_instruct,qwen_2p5_7b_instruct_spar234k}"
-NUM_PROCESSES="${NUM_PROCESSES:-8}"
+NUM_PROCESSES="${NUM_PROCESSES:-2}"
 BENCHMARK="${BENCHMARK:-vsibench}"
 EVAL_SCRIPT="${EVAL_SCRIPT:-evaluate_all_in_one.sh}"
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${SLURM_TMPDIR:-${HOME}/.cache/transformers}}"
 export HF_HOME="${HF_HOME:-${SLURM_TMPDIR:-${HOME}/.cache/huggingface}}"
+export HF_TOKEN="${HF_TOKEN:-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}"
 mkdir -p "${TRANSFORMERS_CACHE}" "${HF_HOME}"
 
 printf "[%s] Launch command: %s --model %s --num_processes %s --benchmark %s\n" \
