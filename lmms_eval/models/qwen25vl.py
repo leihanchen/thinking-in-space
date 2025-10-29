@@ -13,7 +13,11 @@ from tqdm import tqdm
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from transformers import AutoModelForCausalLM, AutoProcessor, AutoTokenizer
+from transformers import (
+    AutoProcessor,
+    AutoTokenizer,
+    Qwen2_5_VLForConditionalGeneration,
+)
 
 _POSSIBLE_QWEN_UTIL_ROOTS = (
     "Qwen2.5-VL",
@@ -70,7 +74,7 @@ class Qwen25VL(lmms):
         if device_map == "auto":
             model_kwargs["device_map"] = device_map
 
-        self._model = AutoModelForCausalLM.from_pretrained(
+        self._model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             self.path,
             **model_kwargs,
         ).eval()
