@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus-per-node=h100:2
 #SBATCH --mem=128G
-#SBATCH --time=16:00:00
+#SBATCH --time=24:00:00
 
 set -euo pipefail
 
@@ -80,7 +80,7 @@ else
 fi
 
 # Configure runtime defaults. Override via environment variables when submitting.
-MODEL_LIST="${MODEL_LIST:-qwen_2p5_7b_instruct,qwen_2p5_7b_instruct_spar234k}"
+MODEL_LIST="${MODEL_LIST:-qwen_2p5_7b_instruct,qwen_2p5_7b_instruct_spar234k,qwen_2p5_7b_instruct_spar234k_step550}"
 NUM_PROCESSES="${NUM_PROCESSES:-2}"
 BENCHMARK="${BENCHMARK:-vsibench}"
 EVAL_SCRIPT="${EVAL_SCRIPT:-evaluate_all_in_one.sh}"

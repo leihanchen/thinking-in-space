@@ -139,6 +139,10 @@ for model in "${models[@]}"; do
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/easyr1_spar234k_step240,modality=video"
         ;;
+    "qwen_2p5_7b_instruct_spar234k_step550")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/easyr1_spar234k_step550,modality=video"
+        ;;
     *)
         echo "Unknown model: $model"
         exit -1
