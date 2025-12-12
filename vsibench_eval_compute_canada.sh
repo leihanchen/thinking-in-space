@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus-per-node=h100:2
 #SBATCH --mem=128G
-#SBATCH --time=24:00:00
+#SBATCH --time=8:00:00
 
 set -euo pipefail
 
@@ -80,8 +80,15 @@ else
 fi
 
 # Configure runtime defaults. Override via environment variables when submitting.
-MODEL_LIST="${MODEL_LIST:-qwen_2p5_7b_instruct,qwen_2p5_7b_instruct_spar234k,qwen_2p5_7b_instruct_spar234k_step550}"
-NUM_PROCESSES="${NUM_PROCESSES:-2}"
+MODEL_LIST="${MODEL_LIST:-qwen_2p5_7b_instruct_lora-sft-SQA3Devery24_ep4}"
+
+if [[ -n "${SLURM_GPUS_PER_NODE:-}" ]]; then
+  SLURM_GPU_COUNT=$(echo "${SLURM_GPUS_PER_NODE}" | awk -F: '{print $NF}')
+else
+  SLURM_GPU_COUNT=1
+fi
+
+NUM_PROCESSES="${NUM_PROCESSES:-${SLURM_GPU_COUNT}}"
 BENCHMARK="${BENCHMARK:-vsibench}"
 EVAL_SCRIPT="${EVAL_SCRIPT:-evaluate_all_in_one.sh}"
 
@@ -95,9 +102,14 @@ mkdir -p "${TRANSFORMERS_CACHE}" "${HF_HOME}"
 printf "[%s] Launch command: %s --model %s --num_processes %s --benchmark %s\n" \
   "$(date --iso-8601=seconds)" "${EVAL_SCRIPT}" "${MODEL_LIST}" "${NUM_PROCESSES}" "${BENCHMARK}"
 
+start_time=$(date +%s)
+
 srun bash "${EVAL_SCRIPT}" \
   --model "${MODEL_LIST}" \
   --num_processes "${NUM_PROCESSES}" \
   --benchmark "${BENCHMARK}"
 
+end_time=$(date +%s)
+duration=$((end_time - start_time))
+printf "Inference time cost: %d seconds\n" "${duration}"
 printf "[%s] Evaluation completed successfully\n" "$(date --iso-8601=seconds)"
