@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus-per-node=h100:2
 #SBATCH --mem=128G
-#SBATCH --time=8:00:00
+#SBATCH --time=12:00:00
 
 set -euo pipefail
 
@@ -80,7 +80,7 @@ else
 fi
 
 # Configure runtime defaults. Override via environment variables when submitting.
-MODEL_LIST="${MODEL_LIST:-qwen_2p5_7b_instruct_lora-sft-SQA3Devery24_ep4}"
+MODEL_LIST="${MODEL_LIST:-qwen2_5vl-7b-lora-sft-SQA3Devery24_R12C12F12X62_865steps,qwen2_5vl-7b-lora-sft-SQA3Devery24_ep2}"
 
 if [[ -n "${SLURM_GPUS_PER_NODE:-}" ]]; then
   SLURM_GPU_COUNT=$(echo "${SLURM_GPUS_PER_NODE}" | awk -F: '{print $NF}')
