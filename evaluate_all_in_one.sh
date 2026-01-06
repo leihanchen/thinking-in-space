@@ -159,6 +159,18 @@ for model in "${models[@]}"; do
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-SQA3Devery24_ep2_merged,modality=video"
         ;;
+    "qwen2_5vl-7b-lora-sft-SQA3Devery24_X1_465steps")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-SQA3Devery24_X1_465steps_merged,modality=video"
+        ;;
+    "qwen2_5vl-7b-lora-sft-SQA3Devery24_C1_465steps")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-SQA3Devery24_C1_465steps_merged,modality=video"
+        ;;
+    "videor1-lora-sft-SQA3Devery24_800steps")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1-lora-sft-SQA3Devery24_800steps_merged,modality=video"
+        ;;
     *)
         echo "Unknown model: $model"
         exit -1
