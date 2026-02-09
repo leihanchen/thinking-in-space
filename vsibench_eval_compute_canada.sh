@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus-per-node=h100:2
 #SBATCH --mem=128G
-#SBATCH --time=10:00:00
+#SBATCH --time=8:00:00
 
 set -euo pipefail
 
@@ -80,7 +80,7 @@ else
 fi
 
 # Configure runtime defaults. Override via environment variables when submitting.
-MODEL_LIST="${MODEL_LIST:-qwen2_5vl-7b-lora-sft-SQA3Devery24_C1_465steps}"
+MODEL_LIST="${MODEL_LIST:-EasyR1-qwen25vl-7b-spar234k-sgrpo-step140}"
 
 if [[ -n "${SLURM_GPUS_PER_NODE:-}" ]]; then
   SLURM_GPU_COUNT=$(echo "${SLURM_GPUS_PER_NODE}" | awk -F: '{print $NF}')
@@ -95,7 +95,7 @@ EVAL_SCRIPT="${EVAL_SCRIPT:-evaluate_all_in_one.sh}"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${SLURM_TMPDIR:-${HOME}/.cache/transformers}}"
 export HF_HOME="${HF_HOME:-${SLURM_TMPDIR:-${HOME}/.cache/huggingface}}"
-export HF_TOKEN="${HF_TOKEN:-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}"
+export HF_TOKEN="${HF_TOKEN:-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}"
 export MAIN_PROCESS_PORT="${MAIN_PROCESS_PORT:-0}"
 mkdir -p "${TRANSFORMERS_CACHE}" "${HF_HOME}"
 
