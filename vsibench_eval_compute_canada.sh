@@ -80,7 +80,7 @@ else
 fi
 
 # Configure runtime defaults. Override via environment variables when submitting.
-MODEL_LIST="${MODEL_LIST:-EasyR1-qwen25vl-7b-spar234k-sgrpo-step140}"
+MODEL_LIST="${MODEL_LIST:-EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0.5-half0-step20,EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0-half0-step20,EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0.5-half0.5-step20}"
 
 if [[ -n "${SLURM_GPUS_PER_NODE:-}" ]]; then
   SLURM_GPU_COUNT=$(echo "${SLURM_GPUS_PER_NODE}" | awk -F: '{print $NF}')

@@ -175,6 +175,18 @@ for model in "${models[@]}"; do
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/EasyR1-qwen25vl-7b-spar234k-sgrpo-step140,modality=video"
         ;;
+    "EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0.5-half0-step20")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0.5-half0-step20,modality=video"
+        ;;
+    "EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0-half0-step20")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0-half0-step20,modality=video"
+        ;;
+    "EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0.5-half0.5-step20")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0.5-half0.5-step20,modality=video"
+        ;;  
     *)
         echo "Unknown model: $model"
         exit -1
