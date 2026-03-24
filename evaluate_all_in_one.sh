@@ -187,6 +187,10 @@ for model in "${models[@]}"; do
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/EasyR1-qwen25vl-7b-spar234k-sgrpo-prob0.5-half0.5-step20,modality=video"
         ;;  
+    "cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_426steps_merged")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_426steps_merged,modality=video"
+        ;;
     *)
         echo "Unknown model: $model"
         exit -1
