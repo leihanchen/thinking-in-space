@@ -44,6 +44,7 @@ AVAILABLE_MODELS = {
     "xcomposer2d5": "XComposer2D5",
     "qwen2vl": "Qwen2VL",
     "qwen25vl": "Qwen25VL",
+    "qwen25vl_reasoning": "Qwen25VLReasoning",
 }
 
 

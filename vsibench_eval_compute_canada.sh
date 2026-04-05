@@ -5,10 +5,10 @@
 #SBATCH --error=%x-%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --gpus-per-node=h100:2
-#SBATCH --mem=128G
-#SBATCH --time=8:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --gpus-per-node=h100:1
+#SBATCH --mem=64G
+#SBATCH --time=7:00:00
 
 set -euo pipefail
 

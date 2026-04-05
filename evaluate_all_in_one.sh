@@ -135,6 +135,14 @@ for model in "${models[@]}"; do
         model_family="qwen25vl"
         model_args="pretrained=Qwen/Qwen2.5-VL-7B-Instruct,modality=video"
         ;;
+    "qwen_2p5_7b_instruct_reasoning_qwen")
+        model_family="qwen25vl_reasoning"
+        model_args="pretrained=Qwen/Qwen2.5-VL-7B-Instruct,modality=video,output_mode=answer_only,tag_type=qwen"
+        ;;
+    "qwen_2p5_7b_instruct_reasoning_ds")
+        model_family="qwen25vl_reasoning"
+        model_args="pretrained=Qwen/Qwen2.5-VL-7B-Instruct,modality=video,output_mode=answer_only,tag_type=ds"
+        ;;
     "qwen_2p5_7b_instruct_spar234k_step240")
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/easyr1_spar234k_step240,modality=video"
