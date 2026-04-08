@@ -18,7 +18,7 @@ num_processes=4
 num_frames=32
 launcher=accelerate
 
-available_models="llava_one_vision_qwen2_0p5b_ov_32f,llava_one_vision_qwen2_7b_ov_32f,llava_next_video_7b_qwen2_32f,llama3_vila1p5_8b_32f,llama3_longvila_8b_128frames_32f,longva_7b_32f,internvl2_2b_8f,internvl2_8b_8f,qwen_2p5_7b_instruct,qwen_2p5_7b_instruct_spar234k_step240,qwen_2p5_7b_instruct_spar234k_step550,qwen_2p5_7b_instruct_lora-sft-SQA3Devery24_native8gpu_ep1"
+available_models="llava_one_vision_qwen2_0p5b_ov_32f,llava_one_vision_qwen2_7b_ov_32f,llava_next_video_7b_qwen2_32f,llama3_vila1p5_8b_32f,llama3_longvila_8b_128frames_32f,longva_7b_32f,internvl2_2b_8f,internvl2_8b_8f,qwen_2p5_7b_instruct,qwen_2p5_7b_instruct_spar234k_step240,qwen_2p5_7b_instruct_spar234k_step550,qwen_2p5_7b_instruct_lora-sft-SQA3Devery24_native8gpu_ep1,cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -198,6 +198,10 @@ for model in "${models[@]}"; do
     "cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_426steps_merged")
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_426steps_merged,modality=video"
+        ;;
+    "cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged")
+        model_family="qwen25vl_reasoning"
+        model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged,modality=video,output_mode=answer_only,tag_type=ds"
         ;;
     "cvis-tmu/EasyR1-qwen25vl-7b-scene30k-epoch1-sft-spar234k-sgrpo-prob0.5-half0.5-step320")
         model_family="qwen25vl"

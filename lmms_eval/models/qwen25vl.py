@@ -218,7 +218,17 @@ class Qwen25VL(lmms):
                 if self.max_frames_num:
                     video_entry["nframes"] = self.max_frames_num
 
-                messages = [
+                messages = []
+                system_prompt = getattr(self, "system_prompt", "")
+                if system_prompt:
+                    messages.append(
+                        {
+                            "role": "system",
+                            "content": [{"type": "text", "text": f"{system_prompt}"}],
+                        }
+                    )
+
+                messages.append(
                     {
                         "role": "user",
                         "content": [
@@ -226,7 +236,7 @@ class Qwen25VL(lmms):
                             {"type": "text", "text": f"{contexts}"},
                         ],
                     }
-                ]
+                )
                 if "until" in gen_kwargs:
                     gen_kwargs.pop("until")
 
