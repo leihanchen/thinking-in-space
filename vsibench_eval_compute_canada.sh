@@ -9,6 +9,8 @@
 #SBATCH --gpus-per-node=h100:1
 #SBATCH --mem=64G
 #SBATCH --time=7:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=leihan.chen@torontomu.ca
 
 set -euo pipefail
 
@@ -47,63 +49,41 @@ if [[ -n "${CUDA_HOME:-}" ]]; then
   export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}"
 fi
 
-ENV_NAME="${ENV_NAME:-vsibench}"
-SKIP_DEP_INSTALL="${SKIP_DEP_INSTALL:-0}"
-OFFLINE_MODE="${OFFLINE_MODE:-1}"
-
 PROJECT_ROOT="${PROJECT_ROOT:-${SLURM_SUBMIT_DIR}}"
-VENV_BASE="${VENV_BASE:-${PROJECT_ROOT}/.venv}"
-VENV_DIR="${VENV_DIR:-${VENV_BASE}/${ENV_NAME}}"
-
-mkdir -p "${VENV_BASE}"
-
-# Validate offline mode requirements
-if [[ "${OFFLINE_MODE}" == "1" ]]; then
-  printf "[%s] Running in OFFLINE mode\n" "$(date --iso-8601=seconds)"
-  
-  # Check venv exists in offline mode
-  if [[ ! -d "${VENV_DIR}" ]]; then
-    printf "[%s] ERROR: Virtual environment not found at %s\n" "$(date --iso-8601=seconds)" "${VENV_DIR}" >&2
-    printf "       In offline mode, venv must be pre-built. Please prepare it first:\n" >&2
-    printf "       1. Run on online machine: python -m venv %s\n" "${VENV_DIR}" >&2
-    printf "       2. Install dependencies: source %s/bin/activate && pip install -r requirements.txt\n" "${VENV_DIR}" >&2
-    exit 1
-  fi
-  
-  # Enforce skip deps in offline mode
-  SKIP_DEP_INSTALL="1"
-fi
-
-if [[ ! -d "${VENV_DIR}" ]]; then
-  if [[ "${OFFLINE_MODE}" == "1" ]]; then
-    printf "[%s] ERROR: Cannot create venv in offline mode\n" "$(date --iso-8601=seconds)" >&2
-    exit 1
-  fi
-  printf "[%s] Creating python venv at %s\n" "$(date --iso-8601=seconds)" "${VENV_DIR}"
-  python -m venv "${VENV_DIR}"
-fi
-
-source "${VENV_DIR}/bin/activate"
-
 cd "${PROJECT_ROOT}"
 
-if [[ "${SKIP_DEP_INSTALL}" != "1" ]]; then
-  if [[ "${OFFLINE_MODE}" == "1" ]]; then
-    printf "[%s] ERROR: Cannot install dependencies in offline mode. Set SKIP_DEP_INSTALL=1 or run in online mode.\n" "$(date --iso-8601=seconds)" >&2
-    exit 1
-  fi
-  printf "[%s] Installing Python dependencies\n" "$(date --iso-8601=seconds)"
-  python -m pip install --upgrade pip setuptools wheel
-  pushd transformers >/dev/null
-  python -m pip install -e .
-  popd >/dev/null
-  python -m pip install -e .
-  python -m pip install "s2wrapper@git+https://github.com/bfshi/scaling_on_scales"
-  python -m pip install deepspeed
-  python -m pip install qwen-vl-utils
-else
-  printf "[%s] Skipping dependency installation because SKIP_DEP_INSTALL=%s\n" "$(date --iso-8601=seconds)" "${SKIP_DEP_INSTALL}"
+SKIP_DEP_INSTALL="${SKIP_DEP_INSTALL:-1}"
+OFFLINE_MODE="${OFFLINE_MODE:-1}"
+SIF_PATH="${SIF_PATH:-${PROJECT_ROOT}/containers/vsibench_eval.sif}"
+CONTAINER_WORKDIR="${CONTAINER_WORKDIR:-/workspace}"
+APPTAINER_MODULE="${APPTAINER_MODULE:-apptainer}"
+
+if [[ "${OFFLINE_MODE}" == "1" ]]; then
+  printf "[%s] Running in OFFLINE mode\n" "$(date --iso-8601=seconds)"
 fi
+
+if ! command -v apptainer >/dev/null 2>&1 && ! command -v singularity >/dev/null 2>&1; then
+  module load "${APPTAINER_MODULE}" 2>/dev/null || module load singularity 2>/dev/null || true
+fi
+
+if command -v apptainer >/dev/null 2>&1; then
+  APPTAINER_BIN="apptainer"
+elif command -v singularity >/dev/null 2>&1; then
+  APPTAINER_BIN="singularity"
+else
+  printf "[%s] ERROR: apptainer/singularity runtime not found. Load the module or set APPTAINER_MODULE.\n" "$(date --iso-8601=seconds)" >&2
+  exit 1
+fi
+
+if [[ ! -f "${SIF_PATH}" ]]; then
+  printf "[%s] ERROR: SIF image not found at %s\n" "$(date --iso-8601=seconds)" "${SIF_PATH}" >&2
+  printf "       Build it first with: apptainer build --fakeroot %s vsibench_eval.def\n" "${SIF_PATH}" >&2
+  exit 1
+fi
+
+printf "[%s] Using container runtime: %s\n" "$(date --iso-8601=seconds)" "${APPTAINER_BIN}"
+printf "[%s] Using SIF image: %s\n" "$(date --iso-8601=seconds)" "${SIF_PATH}"
+printf "[%s] SKIP_DEP_INSTALL=%s (ignored when using SIF-based runtime)\n" "$(date --iso-8601=seconds)" "${SKIP_DEP_INSTALL}"
 
 # Configure runtime defaults. Override via environment variables when submitting.
 MODEL_LIST="${MODEL_LIST:-cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged}"
@@ -129,11 +109,36 @@ if [[ "${OFFLINE_MODE}" != "1" ]]; then
 else
   # In offline mode, use pre-cached models only
   export HF_OFFLINE_MODE=1
+  export HF_HUB_OFFLINE=1
+  export TRANSFORMERS_OFFLINE=1
   printf "[%s] HF_OFFLINE_MODE enabled - using pre-cached models only\n" "$(date --iso-8601=seconds)"
 fi
 
 export MAIN_PROCESS_PORT="${MAIN_PROCESS_PORT:-0}"
 mkdir -p "${TRANSFORMERS_CACHE}" "${HF_HOME}"
+
+export APPTAINERENV_OMP_NUM_THREADS="${OMP_NUM_THREADS}"
+export APPTAINERENV_TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}"
+export APPTAINERENV_HF_HOME="${HF_HOME}"
+export APPTAINERENV_HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE}"
+export APPTAINERENV_MAIN_PROCESS_PORT="${MAIN_PROCESS_PORT}"
+export SINGULARITYENV_OMP_NUM_THREADS="${OMP_NUM_THREADS}"
+export SINGULARITYENV_TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}"
+export SINGULARITYENV_HF_HOME="${HF_HOME}"
+export SINGULARITYENV_HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE}"
+export SINGULARITYENV_MAIN_PROCESS_PORT="${MAIN_PROCESS_PORT}"
+if [[ -n "${HF_TOKEN:-}" ]]; then
+  export APPTAINERENV_HF_TOKEN="${HF_TOKEN}"
+  export SINGULARITYENV_HF_TOKEN="${HF_TOKEN}"
+fi
+if [[ "${OFFLINE_MODE}" == "1" ]]; then
+  export APPTAINERENV_HF_OFFLINE_MODE=1
+  export APPTAINERENV_HF_HUB_OFFLINE=1
+  export APPTAINERENV_TRANSFORMERS_OFFLINE=1
+  export SINGULARITYENV_HF_OFFLINE_MODE=1
+  export SINGULARITYENV_HF_HUB_OFFLINE=1
+  export SINGULARITYENV_TRANSFORMERS_OFFLINE=1
+fi
 
 # Validate cache availability in offline mode
 if [[ "${OFFLINE_MODE}" == "1" ]]; then
@@ -148,7 +153,14 @@ printf "[%s] Launch command: %s --model %s --num_processes %s --benchmark %s\n" 
 
 start_time=$(date +%s)
 
-srun bash "${EVAL_SCRIPT}" \
+srun "${APPTAINER_BIN}" exec --nv \
+  --bind "${PROJECT_ROOT}:${CONTAINER_WORKDIR}" \
+  --bind "${TRANSFORMERS_CACHE}:${TRANSFORMERS_CACHE}" \
+  --bind "${HF_HOME}:${HF_HOME}" \
+  --bind "${HUGGINGFACE_HUB_CACHE}:${HUGGINGFACE_HUB_CACHE}" \
+  --pwd "${CONTAINER_WORKDIR}" \
+  "${SIF_PATH}" \
+  bash "${CONTAINER_WORKDIR}/${EVAL_SCRIPT}" \
   --model "${MODEL_LIST}" \
   --num_processes "${NUM_PROCESSES}" \
   --benchmark "${BENCHMARK}"
