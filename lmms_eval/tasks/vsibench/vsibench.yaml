@@ -1,6 +1,6 @@
 dataset_path: nyu-visionx/VSI-Bench
 dataset_kwargs:
-  token: True
+  token: False
   cache_dir: vsibench
   video: True
 task: vsibench

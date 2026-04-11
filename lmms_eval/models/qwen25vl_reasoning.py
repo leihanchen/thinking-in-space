@@ -138,11 +138,21 @@ class Qwen25VLReasoning(Qwen25VL):
         return last_content
 
     def generate_until(self, requests) -> List[str]:
-        outputs = super().generate_until(requests)
+        # Base model generation returns raw decoded responses.
+        raw_outputs = super().generate_until(requests)
+
+        # Keep a copy for debugging/inspection without changing return type.
+        self.last_raw_outputs = raw_outputs
+
         if self.output_mode == "full_text":
-            return outputs
-        if self.output_mode != "answer_only":
-            raise ValueError(
-                f"Unsupported output_mode '{self.output_mode}'. Use 'answer_only' or 'full_text'."
-            )
-        return [self._extract_answer(output) for output in outputs]
+            self.last_processed_outputs = raw_outputs
+            return raw_outputs
+
+        if self.output_mode == "answer_only":
+            processed_outputs = [self._extract_answer(output) for output in raw_outputs]
+            self.last_processed_outputs = processed_outputs
+            return processed_outputs
+
+        raise ValueError(
+            f"Unsupported output_mode '{self.output_mode}'. Use 'answer_only' or 'full_text'."
+        )
