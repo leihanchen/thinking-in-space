@@ -10,7 +10,7 @@
 #SBATCH --mem=64G
 #SBATCH --time=7:00:00
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=leihan.chen@torontomu.ca
+#SBATCH --mail-user=christopher.indris@torontomu.ca
 
 set -euo pipefail
 
@@ -105,7 +105,15 @@ export HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE:-${HF_HOME}/hub}"
 
 # Only set HF_TOKEN if in online mode or if user explicitly provides it
 if [[ "${OFFLINE_MODE}" != "1" ]]; then
-  export HF_TOKEN="${HF_TOKEN:-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}"
+  if [ -f "/scratch/indrisch/TOKENS/huggingface/cvis-tmu-organization-token.txt" ]; then
+    HF_TOKEN=$(<"/scratch/indrisch/TOKENS/huggingface/cvis-tmu-organization-token.txt")
+    export HF_TOKEN
+    printf "[%s] Loaded HF_TOKEN from file\n" "$(date --iso-8601=seconds)"
+  elif [[ -n "${HF_TOKEN:-}" ]]; then
+    printf "[%s] Using HF_TOKEN from environment variable\n" "$(date --iso-8601=seconds)"
+  else
+    export HF_TOKEN="${HF_TOKEN:-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}"
+  fi
 else
   # In offline mode, use pre-cached models only
   export HF_OFFLINE_MODE=1
