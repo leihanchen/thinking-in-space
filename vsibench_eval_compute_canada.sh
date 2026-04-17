@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --account=def-wangcs
+#SBATCH --account=def-wangcs_gpu
 #SBATCH --job-name=vsibench_eval
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
@@ -9,6 +9,9 @@
 #SBATCH --gpus-per-node=h100:1
 #SBATCH --mem=64G
 #SBATCH --time=7:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=leihan.chen@torontomu.ca
+#SBATCH --partition=gpubase_bygpu_b2
 
 set -euo pipefail
 
@@ -80,7 +83,7 @@ else
 fi
 
 # Configure runtime defaults. Override via environment variables when submitting.
-MODEL_LIST="${MODEL_LIST:-cvis-tmu/EasyR1-qwen25vl-7b-scene30k-epoch1-sft-spar234k-sgrpo-prob0.5-half0.5-step320}"
+MODEL_LIST="${MODEL_LIST:-cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_2130steps_merged,cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged}"
 
 if [[ -n "${SLURM_GPUS_PER_NODE:-}" ]]; then
   SLURM_GPU_COUNT=$(echo "${SLURM_GPUS_PER_NODE}" | awk -F: '{print $NF}')
