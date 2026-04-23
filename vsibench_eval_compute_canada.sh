@@ -5,10 +5,10 @@
 #SBATCH --error=%x-%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH --gpus-per-node=h100_3g.40gb:1
-#SBATCH --mem=24G
-#SBATCH --time=00:15:00
+#SBATCH --cpus-per-task=2
+#SBATCH --gpus-per-node=h100:2
+#SBATCH --mem=64G
+#SBATCH --time=10:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=leihan.chen@torontomu.ca
 
@@ -26,6 +26,9 @@ OPENCV_MODULE="${OPENCV_MODULE:-opencv/4.9.0}"
 
 module load "${GCC_MODULE}"
 module load "${OPENCV_MODULE}"
+
+HOST_GCC_BIN="$(command -v gcc || true)"
+HOST_GXX_BIN="$(command -v g++ || true)"
 
 CUDA_MODULE="${CUDA_MODULE:-cuda/12.2}"
 module load "${CUDA_MODULE}"
@@ -128,6 +131,12 @@ export APPTAINERENV_HF_HUB_CACHE="${HF_HUB_CACHE}"
 export APPTAINERENV_HF_DATASETS_CACHE="${HF_DATASETS_CACHE}"
 export APPTAINERENV_HF_MODULES_CACHE="${HF_MODULES_CACHE}"
 export APPTAINERENV_MAIN_PROCESS_PORT="${MAIN_PROCESS_PORT}"
+# Force container CUDA toolchain paths so DeepSpeed/Triton do not resolve host module paths.
+export APPTAINERENV_CUDA_HOME="/usr/local/cuda"
+export APPTAINERENV_CUDA_PATH="/usr/local/cuda"
+export APPTAINERENV_PATH="/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export APPTAINERENV_LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/local/lib:/usr/lib/x86_64-linux-gnu:/usr/lib:/lib/x86_64-linux-gnu:/lib"
+
 if [[ -n "${HF_TOKEN:-}" ]]; then
   export APPTAINERENV_HF_TOKEN="${HF_TOKEN}"
 fi
@@ -151,7 +160,7 @@ printf "[%s] Launch command: %s --model %s --num_processes %s --benchmark %s\n" 
 
 if [[ "${OFFLINE_MODE}" == "1" ]]; then
   printf "[%s] Preflight: verifying container can see Hugging Face caches\n" "$(date --iso-8601=seconds)"
-  if ! "${APPTAINER_BIN}" exec --nv \
+  if ! "${APPTAINER_BIN}" exec --nv --cleanenv \
     --bind "${PROJECT_ROOT}:${PROJECT_ROOT}" \
     --bind "${HF_HOME}:${HF_HOME}" \
     --bind "${HF_DATASETS_CACHE}:${HF_DATASETS_CACHE}" \
@@ -194,6 +203,55 @@ PY
   fi
 fi
 
+printf "[%s] Preflight: verifying container compiler toolchain for Triton/DeepSpeed\n" "$(date --iso-8601=seconds)"
+if ! "${APPTAINER_BIN}" exec --nv --cleanenv \
+  --bind "${PROJECT_ROOT}:${PROJECT_ROOT}" \
+  --bind "${HF_HOME}:${HF_HOME}" \
+  --pwd "${PROJECT_ROOT}" \
+  "${SIF_PATH}" \
+  bash -lc '
+set -e
+if command -v gcc >/dev/null 2>&1; then
+  gcc --version | head -n 1
+  exit 0
+fi
+if [[ -n "${CC:-}" ]] && [[ -x "${CC}" ]]; then
+  "${CC}" --version | head -n 1
+  exit 0
+fi
+echo "No C compiler visible in container PATH and CC is not executable" >&2
+exit 1
+'; then
+  printf "[%s] ERROR: container cannot find a usable C compiler (gcc/CC).\n" "$(date --iso-8601=seconds)" >&2
+  printf "       Host gcc: %s\n" "${HOST_GCC_BIN:-<not found>}" >&2
+  printf "       Rebuild SIF with gcc installed, or ensure module gcc path is visible inside apptainer.\n" >&2
+  exit 1
+fi
+
+printf "[%s] Preflight: verifying container nvcc path for DeepSpeed\n" "$(date --iso-8601=seconds)"
+if ! "${APPTAINER_BIN}" exec --nv --cleanenv \
+  --bind "${PROJECT_ROOT}:${PROJECT_ROOT}" \
+  --bind "${HF_HOME}:${HF_HOME}" \
+  --pwd "${PROJECT_ROOT}" \
+  "${SIF_PATH}" \
+  bash -lc '
+set -e
+echo "CUDA_HOME=${CUDA_HOME:-<unset>}"
+if [[ -x "${CUDA_HOME:-}/bin/nvcc" ]]; then
+  "${CUDA_HOME}/bin/nvcc" --version | head -n 1
+  exit 0
+fi
+if command -v nvcc >/dev/null 2>&1; then
+  nvcc --version | head -n 1
+  exit 0
+fi
+echo "nvcc is not visible in container" >&2
+exit 1
+'; then
+  printf "[%s] ERROR: container cannot find nvcc. Check CUDA_HOME and CUDA toolkit installation in SIF.\n" "$(date --iso-8601=seconds)" >&2
+  exit 1
+fi
+
 # Validate model cache from inside the container before launching full evaluation.
 # if [[ "${OFFLINE_MODE}" == "1" ]]; then
 #   if ! "${APPTAINER_BIN}" exec --nv \
@@ -212,7 +270,7 @@ fi
 start_time=$(date +%s)
 printf "[%s] Streaming container output directly to stdout/stderr.\n" "$(date --iso-8601=seconds)"
 
-srun "${APPTAINER_BIN}" exec --nv \
+srun "${APPTAINER_BIN}" exec --nv --cleanenv \
   --bind "${PROJECT_ROOT}:${PROJECT_ROOT}" \
   --bind "${HF_HOME}:${HF_HOME}" \
   --pwd "${PROJECT_ROOT}" \

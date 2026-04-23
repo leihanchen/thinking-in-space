@@ -796,10 +796,13 @@ class ConfigurableTask(Task):
     def download(self, dataset_kwargs=None) -> None:
         # If the dataset is a video dataset,
         # Recursively search whether their is a zip and unzip it to the huggingface home
+        dataset_kwargs = dict(dataset_kwargs) if dataset_kwargs is not None else {}
+        offline = bool(dataset_kwargs.pop("offline", False))
+
         download_config = DownloadConfig()
-        download_config.max_retries = dataset_kwargs.get("max_retries", 10) if dataset_kwargs is not None else 10
-        download_config.num_proc = dataset_kwargs.get("num_proc", 8) if dataset_kwargs is not None else 8
-        download_config.local_files_only = dataset_kwargs.get("local_files_only", False) if dataset_kwargs is not None else False
+        download_config.max_retries = dataset_kwargs.get("max_retries", 10)
+        download_config.num_proc = dataset_kwargs.get("num_proc", 8)
+        download_config.local_files_only = offline or dataset_kwargs.get("local_files_only", False)
         if dataset_kwargs is not None:
             if "From_YouTube" in dataset_kwargs:
 
@@ -949,23 +952,75 @@ class ConfigurableTask(Task):
             if "local_files_only" in dataset_kwargs:
                 dataset_kwargs.pop("local_files_only")
 
-        self.dataset = datasets.load_dataset(
-            path=self.DATASET_PATH,
-            name=self.DATASET_NAME,
-            download_mode=datasets.DownloadMode.REUSE_DATASET_IF_EXISTS,
-            download_config=download_config,
-            **dataset_kwargs if dataset_kwargs is not None else {},
-        )
+        # print dataset_kwargs for debugging
+        for key, value in dataset_kwargs.items() if dataset_kwargs is not None else {}:
+            eval_logger.info(f"Dataset download config - {key}: {value}")
+        
+        if offline:
+            offline_dataset_path = dataset_kwargs.pop("offline_dataset_path", None)
+            resolved_dataset_path = offline_dataset_path or self.DATASET_PATH.replace("/", "_")
+            eval_logger.info(f"Attempting to load offline dataset from: {resolved_dataset_path}")
+            if not os.path.exists(resolved_dataset_path):
+                cache_roots = [
+                    os.getenv("HF_DATASETS_CACHE"),
+                    os.getenv("HF_DATASET_CACHE"),  # backward/typo compatibility
+                    os.path.join(os.path.expanduser(os.getenv("HF_HOME", "~/.cache/huggingface")), "datasets"),
+                ]
+                for root in cache_roots:
+                    if root is None:
+                        continue
+                    candidate = os.path.join(os.path.expanduser(root), resolved_dataset_path)
+                    if os.path.exists(candidate):
+                        resolved_dataset_path = candidate
+                        break
+            eval_logger.info(f"Resolved offline dataset path: {resolved_dataset_path}")
+            if not os.path.exists(resolved_dataset_path):
+                raise FileNotFoundError(
+                    f"Offline dataset path not found: {resolved_dataset_path}. "
+                    "Set dataset_kwargs.offline_dataset_path or ensure HF_DATASETS_CACHE points to the local dataset directory."
+                )
+
+            eval_logger.info(f"Offline mode enabled. Loading dataset from disk: {resolved_dataset_path}")
+            self.dataset = datasets.load_from_disk(resolved_dataset_path)
+        else:
+            self.dataset = datasets.load_dataset(
+                path=self.DATASET_PATH,
+                name=self.DATASET_NAME,
+                download_mode=datasets.DownloadMode.REUSE_DATASET_IF_EXISTS,
+                download_config=download_config,
+                **dataset_kwargs if dataset_kwargs is not None else {},
+            )
+
+        if isinstance(self.dataset, datasets.Dataset):
+            split_name = self.config.test_split or self.config.validation_split or self.config.training_split or "test"
+            self.dataset = datasets.DatasetDict({split_name: self.dataset})
+
         if self.config.process_docs is not None:
-            for split in self.dataset:
-                if split in [self.config.training_split, self.config.validation_split, self.config.test_split, self.config.fewshot_split]:
-                    self.dataset[split] = self.config.process_docs(self.dataset[split])
+            if isinstance(self.dataset, datasets.DatasetDict):
+                for split in self.dataset:
+                    if split in [self.config.training_split, self.config.validation_split, self.config.test_split, self.config.fewshot_split]:
+                        self.dataset[split] = self.config.process_docs(self.dataset[split])
+            else:
+                self.dataset = self.config.process_docs(self.dataset)
 
         # copy dataset, remove image features
-        self.dataset_no_image = self.dataset.copy()
-        for doc_name in self.dataset_no_image:
+        if isinstance(self.dataset, datasets.DatasetDict):
+            self.dataset_no_image = datasets.DatasetDict({split: ds for split, ds in self.dataset.items()})
+            for doc_name in self.dataset_no_image:
+                remove_cols = []
+                features = self.dataset_no_image[doc_name].features
+                # If it is an Image instance or a Sequence of Image instance. Remove it
+                for feature in features:
+                    if isinstance(features[feature], Image):
+                        remove_cols.append(feature)
+                    elif isinstance(features[feature], Sequence) and isinstance(features[feature].feature, Image):
+                        remove_cols.append(feature)
+                for remove_col in remove_cols:
+                    self.dataset_no_image[doc_name] = self.dataset_no_image[doc_name].remove_columns(remove_col)
+        else:
+            self.dataset_no_image = self.dataset
             remove_cols = []
-            features = self.dataset_no_image[doc_name].features
+            features = self.dataset_no_image.features
             # If it is an Image instance or a Sequence of Image instance. Remove it
             for feature in features:
                 if isinstance(features[feature], Image):
@@ -973,7 +1028,7 @@ class ConfigurableTask(Task):
                 elif isinstance(features[feature], Sequence) and isinstance(features[feature].feature, Image):
                     remove_cols.append(feature)
             for remove_col in remove_cols:
-                self.dataset_no_image[doc_name] = self.dataset_no_image[doc_name].remove_columns(remove_col)
+                self.dataset_no_image = self.dataset_no_image.remove_columns(remove_col)
 
     def has_training_docs(self) -> bool:
         if self.config.training_split is not None:
