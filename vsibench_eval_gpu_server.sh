@@ -46,10 +46,14 @@ export HF_MODULES_CACHE="${HF_HOME}/modules"
 # Only set HF_TOKEN if in online mode or if user explicitly provides it.
 if [[ "${OFFLINE_MODE}" != "1" ]]; then
   export HF_TOKEN="${HF_TOKEN:-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}"
+  export LMMS_DATASET_OFFLINE_OVERRIDE=false
+  export LMMS_DATASET_LOCAL_FILES_ONLY_OVERRIDE=false
 else
   export HF_OFFLINE_MODE=1
   export HF_HUB_OFFLINE=1
   export HF_DATASETS_OFFLINE=1
+  export LMMS_DATASET_OFFLINE_OVERRIDE=true
+  export LMMS_DATASET_LOCAL_FILES_ONLY_OVERRIDE=true
   printf "[%s] HF_OFFLINE_MODE enabled - using pre-cached models only\n" "$(date --iso-8601=seconds)"
 fi
 
@@ -67,6 +71,8 @@ fi
 printf "[%s] Launch command: %s --model %s --num_processes %s --benchmark %s\n" \
   "$(date --iso-8601=seconds)" "${EVAL_SCRIPT}" "${MODEL_LIST}" "${NUM_PROCESSES}" "${BENCHMARK}"
 printf "[%s] GPU count from nvidia-smi: %s\n" "$(date --iso-8601=seconds)" "${GPU_COUNT_DETECTED}"
+printf "[%s] Dataset override: offline=%s, local_files_only=%s\n" \
+  "$(date --iso-8601=seconds)" "${LMMS_DATASET_OFFLINE_OVERRIDE}" "${LMMS_DATASET_LOCAL_FILES_ONLY_OVERRIDE}"
 
 if [[ "${OFFLINE_MODE}" == "1" ]]; then
   printf "[%s] Preflight: verifying local Hugging Face cache paths\n" "$(date --iso-8601=seconds)"

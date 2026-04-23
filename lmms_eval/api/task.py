@@ -797,12 +797,34 @@ class ConfigurableTask(Task):
         # If the dataset is a video dataset,
         # Recursively search whether their is a zip and unzip it to the huggingface home
         dataset_kwargs = dict(dataset_kwargs) if dataset_kwargs is not None else {}
-        offline = bool(dataset_kwargs.pop("offline", False))
+
+        def _to_bool(value):
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, (int, float)):
+                return bool(value)
+            if isinstance(value, str):
+                normalized = value.strip().lower()
+                if normalized in {"1", "true", "yes", "y", "on"}:
+                    return True
+                if normalized in {"0", "false", "no", "n", "off", ""}:
+                    return False
+            return bool(value)
+
+        # Runtime override from launcher env, without editing task YAML.
+        env_offline = os.getenv("LMMS_DATASET_OFFLINE_OVERRIDE")
+        env_local_only = os.getenv("LMMS_DATASET_LOCAL_FILES_ONLY_OVERRIDE")
+        if env_offline is not None:
+            dataset_kwargs["offline"] = _to_bool(env_offline)
+        if env_local_only is not None:
+            dataset_kwargs["local_files_only"] = _to_bool(env_local_only)
+
+        offline = _to_bool(dataset_kwargs.pop("offline", False))
 
         download_config = DownloadConfig()
         download_config.max_retries = dataset_kwargs.get("max_retries", 10)
         download_config.num_proc = dataset_kwargs.get("num_proc", 8)
-        download_config.local_files_only = offline or dataset_kwargs.get("local_files_only", False)
+        download_config.local_files_only = offline or _to_bool(dataset_kwargs.get("local_files_only", False))
         if dataset_kwargs is not None:
             if "From_YouTube" in dataset_kwargs:
 
