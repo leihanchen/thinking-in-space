@@ -9,7 +9,7 @@ cd "${PROJECT_ROOT}"
 
 SKIP_DEP_INSTALL="${SKIP_DEP_INSTALL:-1}"
 OFFLINE_MODE="${OFFLINE_MODE:-0}"
-CACHE_ROOT="${CACHE_ROOT:-${PROJECT_ROOT}/.cache/huggingface}"
+CACHE_ROOT="${CACHE_ROOT:-${HOME}/.cache/huggingface}"
 
 if [[ "${OFFLINE_MODE}" == "1" ]]; then
   printf "[%s] Running in OFFLINE mode\n" "$(date --iso-8601=seconds)"
@@ -29,7 +29,7 @@ if [[ -z "${GPU_COUNT_DETECTED}" || "${GPU_COUNT_DETECTED}" -lt 1 ]]; then
 fi
 
 # Configure runtime defaults. Override via environment variables when launching.
-MODEL_LIST="${MODEL_LIST:-cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged}"
+MODEL_LIST="${MODEL_LIST:-cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_2130steps_merged}"
 GPU_COUNT="${GPU_COUNT:-${GPU_COUNT_DETECTED}}"
 NUM_PROCESSES="${NUM_PROCESSES:-${GPU_COUNT}}"
 BENCHMARK="${BENCHMARK:-vsibench}"
