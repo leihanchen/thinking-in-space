@@ -9,6 +9,18 @@ else
     gpu_count=${#devices[@]}
 fi
 
+echo "Detected $gpu_count GPU(s) for evaluation."
+echo NVIDIA_SMI
+nvidia-smi
+echo NVCC VERSION
+if command -v nvcc >/dev/null 2>&1; then
+    nvcc --version
+else
+    echo "nvcc not found; skipping CUDA compiler version check"
+fi
+echo PIP FREEZE
+pip freeze
+
 export OPENAI_API_KEY="" # API KEY FOR OPENAI CHATGPT
 export GOOGLE_API_KEY="" # API KEY FOR GOGOLE GEMINI
 

@@ -1,3 +1,6 @@
+# large folders
+containers/
+
 env
 *.pyc
 output/

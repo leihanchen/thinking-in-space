@@ -1,0 +1,21 @@
+Bootstrap: docker
+From: python:3.11
+
+%files
+    # Copy pyproject.toml and source code into the container
+    pyproject.toml /app/pyproject.toml
+    . /app/thinking-in-space  # Adjust based on your project structure
+
+%post
+    # Install dependencies
+    cd /app/thinking-in-space
+    pip install --upgrade pip
+    pip install --no-cache-dir .
+
+%environment
+    # Set environment variables if needed
+    export PATH=/app/thinking-in-space:$PATH
+
+%runscript
+    # Command to run when executing the container
+    bash

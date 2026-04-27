@@ -1,27 +1,94 @@
 #!/bin/bash
 #SBATCH --account=def-wangcs_gpu
 #SBATCH --job-name=vsibench_eval
-#SBATCH --output=%x-%j.out
-#SBATCH --error=%x-%j.err
+#SBATCH --output=%x-%N-%j.out
+#SBATCH --error=%x-%N-%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --gpus-per-node=h100:1
+#SBATCH --gpus-per-node=h100:2
 #SBATCH --mem=64G
 #SBATCH --time=7:00:00
 #SBATCH --mail-type=ALL
-<<<<<<< HEAD
 #SBATCH --mail-user=christopher.indris@torontomu.ca
-=======
-#SBATCH --mail-user=leihan.chen@torontomu.ca
 #SBATCH --partition=gpubase_bygpu_b2
->>>>>>> qwen25vl_evaluation
+
+
+# Settings for full run:
+# #SBATCH --cpus-per-task=2
+# #SBATCH --gpus-per-node=h100:2
+# #SBATCH --mem=64G
+# #SBATCH --time=7:00:00
 
 set -euo pipefail
 
 printf "[%s] Starting VSI-Bench evaluation on host: %s\n" "$(date --iso-8601=seconds)" "${HOSTNAME}"
 
-# Configure module environment. Adjust if your Compute Canada site uses different module names.
+USER_ACCOUNT=$(whoami)
+echo "Running as user: ${USER_ACCOUNT}"
+
+# --- Project root ---
+
+if [[ "$USER_ACCOUNT" == "indrisch" ]] && [[ "$PWD" == *thinking-in-space* ]]; then
+      PROJECT_ROOT="${PWD%%thinking-in-space*}/thinking-in-space"
+else
+    PROJECT_ROOT="${PROJECT_ROOT:-${SLURM_SUBMIT_DIR}}"
+    cd "${PROJECT_ROOT}"
+fi
+
+SYSCONFIG_DIR_PATH="$PROJECT_ROOT/scripts"
+export PYTHONPATH="$PYTHONPATH:$SYSCONFIG_DIR_PATH"
+
+
+# --- setting environment ---
+
+# Detect cluster based on terminal prompt or hostname
+if [[ "$HOSTNAME" == *"rg"* ]]; then
+    CLUSTER="RORQUAL"
+elif [[ "$HOSTNAME" == *"trig"* ]]; then
+    CLUSTER="TRILLIUM"
+elif [[ "$HOSTNAME" == *"kn"* ]]; then
+    CLUSTER="KILLARNEY"
+elif [[ "$HOSTNAME" == *"g"* ]]; then
+    CLUSTER="NIBI"
+    OFFLINE_MODE=0  # Nibi has internet access, so disable offline mode
+else
+    echo "Warning: Could not detect cluster from PS1 or HOSTNAME. Defaulting to RORQUAL."
+    CLUSTER="RORQUAL"
+fi
+
+echo cluster detected: "${CLUSTER}"
+
+
+if [[ "$USER_ACCOUNT" == "indrisch" ]]; then
+    # Custom settings for user 'indrisch'
+    TRANSFORMERS_CACHE="/scratch/indrisch/.cache/transformers"
+    export HF_HOME="$(python3 -c "import sysconfigtool; print(sysconfigtool.read('${CLUSTER}', 'HF_HOME'))")" && echo "HF_HOME: $HF_HOME"
+    export HF_HUB_CACHE="$(python3 -c "import sysconfigtool; print(sysconfigtool.read('${CLUSTER}', 'HF_HUB_CACHE'))")" && echo "HF_HUB_CACHE: $HF_HUB_CACHE"
+    export HUGGINGFACE_HUB_CACHE="$HF_HUB_CACHE"
+    export TRITON_CACHE_DIR="$(python3 -c "import sysconfigtool; print(sysconfigtool.read('${CLUSTER}', 'TRITON_CACHE_DIR'))")" && echo "TRITON_CACHE_DIR: $TRITON_CACHE_DIR"
+    export FLASHINFER_WORKSPACE_BASE="$(python3 -c "import sysconfigtool; print(sysconfigtool.read('${CLUSTER}', 'FLASHINFER_WORKSPACE_BASE'))")" && echo "FLASHINFER_WORKSPACE_BASE: $FLASHINFER_WORKSPACE_BASE"
+    export BEST_GPU="$(python3 -c "import sysconfigtool; print(sysconfigtool.read('${CLUSTER}', 'BEST_GPU'))")" && echo "BEST_GPU: $BEST_GPU"
+    export TORCH_EXTENSIONS_DIR="$(python3 -c "import sysconfigtool; print(sysconfigtool.read('${CLUSTER}', 'TORCH_EXTENSIONS_DIR'))")" && echo "TORCH_EXTENSIONS_DIR: $TORCH_EXTENSIONS_DIR"
+    export SIF_FILE="$(python3 -c "import sysconfigtool; print(sysconfigtool.read('${CLUSTER}', 'SIF_FILE'))")" && echo "SIF_FILE: $SIF_FILE"
+    export SIF_PATH="$SIF_FILE"
+
+    export WANDB_DIR="${PROJECT_ROOT}/wandb/"
+    if [[ "$BEST_GPU" == "h100" ]]; then
+        export TORCH_CUDA_ARCH_LIST="9.0"
+    else
+        export TORCH_CUDA_ARCH_LIST="8.0"
+    fi
+else
+    echo "Using default environment settings for ${USER_ACCOUNT}"
+    SIF_PATH="${SIF_PATH:-${PROJECT_ROOT}/containers/vsibench_eval.sif}"
+fi
+
+# ----
+
+
+# Configure module environment. The container already carries its own CUDA stack,
+# so avoid exporting the host CUDA toolchain into the Apptainer runtime.
 SCIPY_STACK_MODULE="${SCIPY_STACK_MODULE:-scipy-stack/2024a}"
 module load StdEnv/2023 "${SCIPY_STACK_MODULE}"
 
@@ -32,34 +99,11 @@ OPENCV_MODULE="${OPENCV_MODULE:-opencv/4.9.0}"
 module load "${GCC_MODULE}"
 module load "${OPENCV_MODULE}"
 
-CUDA_MODULE="${CUDA_MODULE:-cuda/12.2}"
-module load "${CUDA_MODULE}"
-
-# CUDA_MODULE="${CUDA_MODULE:-cuda/12.1}"
-# if ! module load "${CUDA_MODULE}"; then
-#   printf "[%s] Requested CUDA module '%s' not found. Falling back to cuda/11.8 for compatibility.\n" \
-#     "$(date --iso-8601=seconds)" "${CUDA_MODULE}" >&2
-#   module load cuda/11.8
-# fi
-# module load cuda/11.8
 module load python/3.10
 module load arrow/18.1.0
 
-if [[ -z "${CUDA_HOME:-}" && -n "${EBROOTCUDA:-}" ]]; then
-  export CUDA_HOME="${EBROOTCUDA}"
-fi
-
-if [[ -n "${CUDA_HOME:-}" ]]; then
-  export PATH="${CUDA_HOME}/bin:${PATH}"
-  export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}"
-fi
-
-PROJECT_ROOT="${PROJECT_ROOT:-${SLURM_SUBMIT_DIR}}"
-cd "${PROJECT_ROOT}"
-
 SKIP_DEP_INSTALL="${SKIP_DEP_INSTALL:-1}"
 OFFLINE_MODE="${OFFLINE_MODE:-1}"
-SIF_PATH="${SIF_PATH:-${PROJECT_ROOT}/containers/vsibench_eval.sif}"
 CONTAINER_WORKDIR="${CONTAINER_WORKDIR:-/workspace}"
 APPTAINER_MODULE="${APPTAINER_MODULE:-apptainer}"
 
@@ -135,11 +179,15 @@ export APPTAINERENV_TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}"
 export APPTAINERENV_HF_HOME="${HF_HOME}"
 export APPTAINERENV_HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE}"
 export APPTAINERENV_MAIN_PROCESS_PORT="${MAIN_PROCESS_PORT}"
+export APPTAINERENV_PYTHONNOUSERSITE=1
+export APPTAINERENV_LD_LIBRARY_PATH="/usr/local/lib/python3.11/site-packages/nvidia/nccl/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 export SINGULARITYENV_OMP_NUM_THREADS="${OMP_NUM_THREADS}"
 export SINGULARITYENV_TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}"
 export SINGULARITYENV_HF_HOME="${HF_HOME}"
 export SINGULARITYENV_HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE}"
 export SINGULARITYENV_MAIN_PROCESS_PORT="${MAIN_PROCESS_PORT}"
+export SINGULARITYENV_PYTHONNOUSERSITE=1
+export SINGULARITYENV_LD_LIBRARY_PATH="/usr/local/lib/python3.11/site-packages/nvidia/nccl/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 if [[ -n "${HF_TOKEN:-}" ]]; then
   export APPTAINERENV_HF_TOKEN="${HF_TOKEN}"
   export SINGULARITYENV_HF_TOKEN="${HF_TOKEN}"
@@ -161,12 +209,19 @@ if [[ "${OFFLINE_MODE}" == "1" ]]; then
   fi
 fi
 
+# --- final module check ---
+
+module list
+
+# --- launch ---
+
 printf "[%s] Launch command: %s --model %s --num_processes %s --benchmark %s\n" \
   "$(date --iso-8601=seconds)" "${EVAL_SCRIPT}" "${MODEL_LIST}" "${NUM_PROCESSES}" "${BENCHMARK}"
 
 start_time=$(date +%s)
 
-srun "${APPTAINER_BIN}" exec --nv \
+srun "${APPTAINER_BIN}" exec --fakeroot --nv --overlay /scratch/indrisch/thinking-in-space/containers/apptainer-overlay.img -C \
+  --bind /etc/pki/tls/certs/ca-bundle.crt \
   --bind "${PROJECT_ROOT}:${CONTAINER_WORKDIR}" \
   --bind "${TRANSFORMERS_CACHE}:${TRANSFORMERS_CACHE}" \
   --bind "${HF_HOME}:${HF_HOME}" \
