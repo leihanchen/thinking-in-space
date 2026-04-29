@@ -9,6 +9,6 @@ Computer nodes do not have internet access.
 
 # Using the apptainer on the login node
 
-To explore the container we are using:
+To explore the container we are using, including checking its environment:
 
-`apptainer exec --nv /scratch/indrisch/thinking-in-space/containers/vsibench_eval.sif bash`
+`apptainer exec --fakeroot --nv --overlay /scratch/indrisch/thinking-in-space/containers/apptainer-overlay.img -C /scratch/indrisch/thinking-in-space/containers/vsibench_eval.sif bash`
