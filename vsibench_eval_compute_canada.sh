@@ -8,10 +8,9 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-node=h100:2
 #SBATCH --mem=64G
-#SBATCH --time=7:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=christopher.indris@torontomu.ca
-#SBATCH --partition=gpubase_bygpu_b2
 
 
 # Settings for full run:
@@ -135,7 +134,8 @@ printf "[%s] Using SIF image: %s\n" "$(date --iso-8601=seconds)" "${SIF_PATH}"
 printf "[%s] SKIP_DEP_INSTALL=%s (ignored when using SIF-based runtime)\n" "$(date --iso-8601=seconds)" "${SKIP_DEP_INSTALL}"
 
 # Configure runtime defaults. Override via environment variables when submitting.
-MODEL_LIST="${MODEL_LIST:-cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_2130steps_merged,cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged}"
+# MODEL_LIST="${MODEL_LIST:-cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_2130steps_merged,cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged}"
+MODEL_LIST="${MODEL_LIST:-cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_426steps,cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_852steps,cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_5epochs,cvis-tmu/videor1-lora-sft-Scene30k_traineval_426steps,cvis-tmu/videor1-lora-sft-Scene30k_traineval_852steps,cvis-tmu/videor1-lora-sft-Scene30k_traineval_5epochs}"
 
 if [[ -n "${SLURM_GPUS_PER_NODE:-}" ]]; then
   SLURM_GPU_COUNT=$(echo "${SLURM_GPUS_PER_NODE}" | awk -F: '{print $NF}')

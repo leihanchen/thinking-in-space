@@ -223,6 +223,30 @@ for model in "${models[@]}"; do
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged,modality=video"
         ;;
+    "cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_426steps")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_426steps,modality=video"
+        ;;
+    "cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_852steps")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_852steps,modality=video"
+        ;;
+    "cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_5epochs")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_5epochs,modality=video"
+        ;;
+    "cvis-tmu/videor1-lora-sft-Scene30k_traineval_426steps")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1-lora-sft-Scene30k_traineval_426steps,modality=video"
+        ;;
+    "cvis-tmu/videor1-lora-sft-Scene30k_traineval_852steps")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1-lora-sft-Scene30k_traineval_852steps,modality=video"
+        ;;
+    "cvis-tmu/videor1-lora-sft-Scene30k_traineval_5epochs")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1-lora-sft-Scene30k_traineval_5epochs,modality=video"
+        ;;
     *)
         echo "Unknown model: $model"
         exit -1
