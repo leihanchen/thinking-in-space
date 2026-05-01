@@ -5,6 +5,10 @@ from datetime import timedelta
 from typing import Dict, List, Tuple
 
 import torch
+# Disable cuDNN SDPA backend due to mha_graph.execute() failures on H100s
+if torch.cuda.is_available() and hasattr(torch.backends.cuda, "enable_cudnn_sdp"):
+    torch.backends.cuda.enable_cudnn_sdp(False) # https://github.com/huggingface/diffusers/issues/10383
+
 from accelerate import Accelerator, DistributedType
 from accelerate.state import AcceleratorState
 from accelerate.utils import InitProcessGroupKwargs
@@ -70,6 +74,7 @@ class Qwen25VL(lmms):
             torch_dtype=torch_dtype,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
+            attn_implementation=kwargs.get("attn_implementation", "flash_attention_2"),
         )
         if device_map == "auto":
             model_kwargs["device_map"] = device_map
