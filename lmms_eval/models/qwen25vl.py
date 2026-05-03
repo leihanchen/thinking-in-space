@@ -73,8 +73,7 @@ class Qwen25VL(lmms):
         model_kwargs = dict(
             torch_dtype=torch_dtype,
             low_cpu_mem_usage=True,
-            trust_remote_code=True,
-            attn_implementation=kwargs.get("attn_implementation", "flash_attention_2"),
+            trust_remote_code=True, # attn_implementation=kwargs.get("attn_implementation", "flash_attention_2"), would require flash_attention_2 to be installed
         )
         if device_map == "auto":
             model_kwargs["device_map"] = device_map
