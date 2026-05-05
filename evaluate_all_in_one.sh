@@ -235,6 +235,10 @@ for model in "${models[@]}"; do
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_5epochs,modality=video"
         ;;
+    "cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_5epochs_merged")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_5epochs_merged,modality=video"
+        ;;
     "cvis-tmu/videor1-lora-sft-Scene30k_traineval_426steps")
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/videor1-lora-sft-Scene30k_traineval_426steps,modality=video"
@@ -246,6 +250,10 @@ for model in "${models[@]}"; do
     "cvis-tmu/videor1-lora-sft-Scene30k_traineval_5epochs")
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/videor1-lora-sft-Scene30k_traineval_5epochs,modality=video"
+        ;;
+    "cvis-tmu/videor1-lora-sft-Scene30k_traineval_5epochs_merged")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1-lora-sft-Scene30k_traineval_5epochs_merged,modality=video"
         ;;
     *)
         echo "Unknown model: $model"
