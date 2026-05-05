@@ -20,7 +20,6 @@ temp
 # IPython
 profile_default/
 ipython_config.py
-logs/
 scripts/
 wandb/
 SimSun.ttf
@@ -32,16 +31,15 @@ cache_dir
 ckpt
 pretrained/
 LLaVA/
-*logs
 *.isorted
 temp/
 InternVL/
-logs/
+*vsibench.json
 data/
 llava-video/
 Video-MME/
 VATEX/
 lmms_eval/tasks/vatex/__pycache__/utils.cpython-310.pyc
 lmms_eval/tasks/mlvu/__pycache__/utils.cpython-310.pyc
-*.err
-*.out
+logs/
+results/

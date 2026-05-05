@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --account=def-wangcs_gpu
 #SBATCH --job-name=vsibench_eval
-#SBATCH --output=%x-%N-%j.out
-#SBATCH --error=%x-%N-%j.err
+#SBATCH --output=results/out/%x-%N-%j.out
+#SBATCH --error=results/err/%x-%N-%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
