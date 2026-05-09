@@ -1,8 +1,10 @@
 dataset_path: nyu-visionx/VSI-Bench
 dataset_kwargs:
-  token: True
+  token: False
   cache_dir: vsibench
   video: True
+  local_files_only: True
+  offline: true
 task: vsibench
 test_split: test
 output_type: generate_until

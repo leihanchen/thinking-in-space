@@ -208,12 +208,16 @@ for model in "${models[@]}"; do
         model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_426steps_merged,modality=video"
         ;;
     "cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged")
-        model_family="qwen25vl_reasoning"
-        model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged,modality=video,output_mode=answer_only,tag_type=ds"
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged,modality=video"
         ;;
     "cvis-tmu/EasyR1-qwen25vl-7b-scene30k-epoch1-sft-spar234k-sgrpo-prob0.5-half0.5-step320")
-        model_family="qwen25vl"
+        model_family="qwen25vl_reasoning"
         model_args="pretrained=cvis-tmu/EasyR1-qwen25vl-7b-scene30k-epoch1-sft-spar234k-sgrpo-prob0.5-half0.5-step320,modality=video"
+	;;
+    "cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_2130steps_merged")
+        model_family="qwen25vl_reasoning"
+        model_args="pretrained=cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_2130steps_merged,modality=video"
         ;;
     "cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_2130steps_merged")
         model_family="qwen25vl"

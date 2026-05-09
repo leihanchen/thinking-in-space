@@ -1,5 +1,7 @@
 # large folders
 containers/
+ENV/
+.cache/
 
 env
 *.pyc
