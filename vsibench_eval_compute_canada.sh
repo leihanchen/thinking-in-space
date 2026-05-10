@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-node=h100:2
 #SBATCH --mem=64G
-#SBATCH --time=0-00:15:00
+#SBATCH --time=2-00:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=christopher.indris@torontomu.ca
 
@@ -135,7 +135,18 @@ printf "[%s] SKIP_DEP_INSTALL=%s (ignored when using SIF-based runtime)\n" "$(da
 
 # Configure runtime defaults. Override via environment variables when submitting.
 # MODEL_LIST="${MODEL_LIST:-cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_2130steps_merged,cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged}"
-MODEL_LIST="${MODEL_LIST:-cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_5epochs_merged,cvis-tmu/videor1-lora-sft-Scene30k_traineval_426steps,cvis-tmu/videor1-lora-sft-Scene30k_traineval_852steps,cvis-tmu/videor1-lora-sft-Scene30k_traineval_5epochs_merged}"
+_MODEL_LIST=(
+  cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_426steps_merged
+  cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_852steps_merged
+  cvis-tmu/videor1-lora-sft-Scene30k_traineval_426steps_merged
+  cvis-tmu/videor1-lora-sft-Scene30k_traineval_852steps_merged
+)
+_ML=''
+for i in "${_MODEL_LIST[@]}"; do 
+  _ML="${_ML}${i}," 
+done
+
+MODEL_LIST="${MODEL_LIST:-${_ML%,}}"
 
 if [[ -n "${SLURM_GPUS_PER_NODE:-}" ]]; then
   SLURM_GPU_COUNT=$(echo "${SLURM_GPUS_PER_NODE}" | awk -F: '{print $NF}')
@@ -223,13 +234,17 @@ printf "[%s] Launch command: %s --model %s --num_processes %s --benchmark %s\n" 
 
 start_time=$(date +%s)
 
-srun "${APPTAINER_BIN}" exec --fakeroot --nv --overlay /scratch/indrisch/thinking-in-space/containers/apptainer-overlay.img -C \
+OVERLAY_IMG="${OVERLAY_IMG:-/scratch/indrisch/thinking-in-space/containers/apptainer-overlay.img}"
+export TRANSFORMERS_VERBOSITY=info
+
+srun "${APPTAINER_BIN}" exec --fakeroot --nv --overlay $OVERLAY_IMG -C \
   --bind /etc/pki/tls/certs/ca-bundle.crt \
   --bind "${PROJECT_ROOT}:${CONTAINER_WORKDIR}" \
   --bind "${TRANSFORMERS_CACHE}:${TRANSFORMERS_CACHE}" \
   --bind "${HF_HOME}:${HF_HOME}" \
   --bind "${HUGGINGFACE_HUB_CACHE}:${HUGGINGFACE_HUB_CACHE}" \
   --env DECORD_EOF_RETRY_MAX=${DECORD_EOF_RETRY_MAX} \
+  --env TRANSFORMERS_VERBOSITY=${TRANSFORMERS_VERBOSITY} \
   --pwd "${CONTAINER_WORKDIR}" \
   "${SIF_PATH}" \
   bash "${CONTAINER_WORKDIR}/${EVAL_SCRIPT}" \
