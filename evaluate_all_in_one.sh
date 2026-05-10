@@ -255,6 +255,30 @@ for model in "${models[@]}"; do
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/videor1-lora-sft-Scene30k_traineval_5epochs_merged,modality=video"
         ;;
+    "cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_426steps_merged")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_426steps_merged,modality=video"
+        ;;
+    "cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_852steps_merged")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1sft-lora-sft-Scene30k_traineval_852steps_merged,modality=video"
+        ;;
+    "cvis-tmu/videor1-lora-sft-Scene30k_traineval_426steps_merged")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1-lora-sft-Scene30k_traineval_426steps_merged,modality=video"
+        ;;
+    "cvis-tmu/videor1-lora-sft-Scene30k_traineval_852steps_merged")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/videor1-lora-sft-Scene30k_traineval_852steps_merged,modality=video"
+        ;;
+    "cvis-tmu/Video-R1-7B")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/Video-R1-7B,modality=video"
+        ;;
+    "cvis-tmu/Qwen2.5-VL-7B-COT-SFT")
+        model_family="qwen25vl"
+        model_args="pretrained=cvis-tmu/Qwen2.5-VL-7B-COT-SFT,modality=video"
+        ;;
     *)
         echo "Unknown model: $model"
         exit -1
