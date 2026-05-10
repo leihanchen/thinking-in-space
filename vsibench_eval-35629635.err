@@ -1,0 +1,12 @@
+
+The following have been reloaded with a version change:
+  1) python/3.11.5 => python/3.10.13
+
+[2026-04-25T07:45:20-07:00] WARNING: Transformer cache directory may be empty: /scratch/indrisch/thinking-in-space/.cache/transformers
+       Make sure models are pre-cached before running in offline mode.
+WARNING: skipping mount of /scratch/indrisch/thinking-in-space/.cache/huggingface/hub: stat /scratch/indrisch/thinking-in-space/.cache/huggingface/hub: no such file or directory
+INFO:    Terminating squashfuse_ll after timeout
+INFO:    Timeouts can be caused by a running background process
+FATAL:   container creation failed: mount hook function failure: mount /scratch/indrisch/thinking-in-space/.cache/huggingface/hub->/scratch/indrisch/thinking-in-space/.cache/huggingface/hub error: while mounting /scratch/indrisch/thinking-in-space/.cache/huggingface/hub: mount source /scratch/indrisch/thinking-in-space/.cache/huggingface/hub doesn't exist
+srun: error: fc10508: task 0: Exited with exit code 255
+srun: Terminating StepId=35629635.0

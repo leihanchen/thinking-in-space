@@ -1,0 +1,7 @@
+[2026-04-25T07:45:18-07:00] Starting VSI-Bench evaluation on host: fc10508
+[2026-04-25T07:45:20-07:00] Running in OFFLINE mode
+[2026-04-25T07:45:20-07:00] Using container runtime: apptainer
+[2026-04-25T07:45:20-07:00] Using SIF image: /scratch/indrisch/thinking-in-space/containers/vsibench_eval.sif
+[2026-04-25T07:45:20-07:00] SKIP_DEP_INSTALL=1 (ignored when using SIF-based runtime)
+[2026-04-25T07:45:20-07:00] HF_OFFLINE_MODE enabled - using pre-cached models only
+[2026-04-25T07:45:20-07:00] Launch command: evaluate_all_in_one.sh --model cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_2130steps_merged,cvis-tmu/qwen2_5vl-7b-lora-sft-Scene30k_traineval_852steps_merged --num_processes 2 --benchmark vsibench
