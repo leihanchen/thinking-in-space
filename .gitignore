@@ -20,7 +20,6 @@ temp
 # IPython
 profile_default/
 ipython_config.py
-scripts/
 wandb/
 SimSun.ttf
 submissions/
