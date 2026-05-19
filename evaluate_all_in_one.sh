@@ -279,6 +279,10 @@ for model in "${models[@]}"; do
         model_family="qwen25vl"
         model_args="pretrained=cvis-tmu/Qwen2.5-VL-7B-COT-SFT,modality=video"
         ;;
+    "Video-R1/Qwen2.5-VL-7B-COT-SFT")
+        model_family="qwen25vl"
+        model_args="pretrained=Video-R1/Qwen2.5-VL-7B-COT-SFT,modality=video"
+        ;;
     *)
         echo "Unknown model: $model"
         exit -1
